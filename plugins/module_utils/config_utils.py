@@ -9,6 +9,7 @@ __metaclass__ = type
 
 from typing import Any
 from xml.etree import ElementTree
+import yaml
 
 from ansible_collections.puzzle.opnsense.plugins.module_utils import xml_utils
 
@@ -36,15 +37,18 @@ class OPNsenseConfig:
     """
     _config_path: str
     _config_dict: dict
+    _check_mode: bool
 
-    def __init__(self, path: str = "/conf/config.xml"):
+    def __init__(self, path: str = "/conf/config.xml", check_mode = False):
         """
         Initializes an instance of OPNsenseConfig.
 
         :param path:  The path to the OPNsense config file (default: "/conf/config.xml").
+        :param check_mode: Whether or not the OPNsenseConfig context manager should run in checkmode or not (default: `False`).
         """
         self._config_path = path
         self._config_dict = self._parse_config_from_file()
+        self._check_mode = check_mode
 
     def __enter__(self) -> "OPNsenseConfig":
         return self
@@ -57,7 +61,7 @@ class OPNsenseConfig:
         """
         if exc_type:
             raise exc_type(f"Exception occurred: {exc_val}")
-        if self.changed:
+        if self.changed and not self._check_mode:
             raise RuntimeError("Config has changed. Cannot exit without saving.")
 
     def __getitem__(self, key: Any) -> Any:
@@ -80,8 +84,10 @@ class OPNsenseConfig:
         """
         Saves the config dictionary to the config file if changes have been made.
 
-        :return: True if changes were saved, False if no changes were detected.
+        :return: True if changes were saved or checkmode is active, False if no changes were detected.
         """
+        if self._check_mode: return True
+
         if self.changed:
             new_config_root = xml_utils.dict_to_etree("opnsense", self._config_dict)[0]
             new_tree = ElementTree.ElementTree(new_config_root)
@@ -99,3 +105,15 @@ class OPNsenseConfig:
         """
         orig_dict = self._parse_config_from_file()
         return orig_dict != self._config_dict
+
+    @property
+    def diff(self) -> dict:
+        """
+        Returns the diff in the config
+
+        :return: dict of config diffs
+        """
+        return dict(
+          before=yaml.safe_dump(self._parse_config_from_file()),
+          after=yaml.safe_dump(self._config_dict)
+        )
