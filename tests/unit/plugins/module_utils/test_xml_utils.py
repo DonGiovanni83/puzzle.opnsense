@@ -371,3 +371,50 @@ def test_etree_to_dict__multiple_nested_dicts(etree_root: Element) -> None:
         assert child_dict["bob"] is not None
         assert "cat" in list(child_dict.keys())
         assert child_dict["cat"] is not None
+
+
+@pytest.mark.parametrize("etree_root", [
+    "<foo><bar>1</bar><john>2</john><doe><bob>3</bob><bob>4</bob></doe></foo>"
+], indirect=True)
+def test_etree_to_dict__multiple_mixed_values(etree_root: Element) -> None:
+    """
+    Test converting an ElementTree.Element structure to a dictionary with multiple
+    mixed (primitive and non-primitive) elements.
+
+  Example:
+    - Input:
+        <foo>
+            <bar>1</bar>
+            <john>2</john>
+            <doe>
+                <bob>3</bob>
+                <bob>4</bob>
+            </doe>
+        </foo>
+    - Expected Output:
+        {
+            "foo": {
+                "bar" : 1,
+                "john" : 2,
+                "doe": { "bob" : [3,4] }
+            }
+        }
+    :param etree_root:
+    :return:
+    """
+    output_dict: dict = xml_utils.etree_to_dict(etree_root)
+
+    # foo should be a dict with two elements
+    assert isinstance(output_dict["foo"], dict)
+
+    foo: dict = output_dict["foo"]
+    # check "bar" and "john"
+    assert isinstance(foo["bar"], str)
+    assert foo["bar"] == "1"
+    assert isinstance(foo["john"], str)
+    assert foo["john"] == "2"
+
+    # check "doe" and "bob"
+    assert isinstance(foo["doe"], dict)
+    assert isinstance(foo["doe"]["bob"], list)
+
