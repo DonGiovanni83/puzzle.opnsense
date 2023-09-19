@@ -48,7 +48,7 @@ import re
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.puzzle.opnsense.plugins.module_utils import (
     config_utils,
-    opnsense_utils,
+    system_settings_general_utils,
 )
 
 HOSTNAME_INDEX = 1
@@ -145,7 +145,7 @@ def main():
             config_mgr.save()
             result[
                 "opnsense_configure_output"
-            ] = opnsense_utils.system_settings_general()
+            ] = system_settings_general_utils.apply()
 
     # Return results
     module.exit_json(**result)

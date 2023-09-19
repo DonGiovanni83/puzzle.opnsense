@@ -10,7 +10,7 @@ __metaclass__ = type
 from typing import List
 import subprocess
 
-def _run_function(php_requirements: List[str], configure_function: str, configure_params: List = []) -> str:
+def run_function(php_requirements: List[str], configure_function: str, configure_params: List = []) -> str:
     """
     Execute a php function optional with parameters
 
@@ -42,90 +42,3 @@ def _run_function(php_requirements: List[str], configure_function: str, configur
     )
     return cmd_result.stdout
 
-
-def system_settings_general() -> List[str]:
-    """
-    Execute the required php function to apply settings in the System -> Settings -> General (system_general.php) view.
-    https://github.com/opnsense/core/blob/cbaf7cee1f0a6fabd1ec4c752a5d169c402976dc/src/www/system_general.php#L227
-
-    :return: Returns a list os strings containing the stdout of all the commands executed
-    """
-
-    # requirements to execute the various functions can be found in the respective php file
-    # https://github.com/opnsense/core/blob/cbaf7cee1f0a6fabd1ec4c752a5d169c402976dc/src/www/system_general.php#L30
-    php_requirements = [
-        "/usr/local/etc/inc/config.inc",
-        "/usr/local/etc/inc/util.inc",
-        "/usr/local/etc/inc/system.inc",
-        "/usr/local/etc/inc/interfaces.lib.inc",
-        "/usr/local/etc/inc/interfaces.inc",
-        "/usr/local/etc/inc/filter.inc",
-    ]
-
-    cmd_output = []
-    # the order of commands executed is relevant
-    # https://github.com/opnsense/core/blob/cbaf7cee1f0a6fabd1ec4c752a5d169c402976dc/src/www/system_general.php#L227
-
-    # https://github.com/opnsense/core/blob/cbaf7cee1f0a6fabd1ec4c752a5d169c402976dc/src/etc/inc/system.inc#L935
-    cmd_output.append(
-        _run_function(
-            php_requirements=php_requirements,
-            configure_function="system_timezone_configure",
-            configure_params=["true"], # first param: verbose
-        )
-    )
-
-    # https://github.com/opnsense/core/blob/cbaf7cee1f0a6fabd1ec4c752a5d169c402976dc/src/etc/inc/system.inc#L864
-    cmd_output.append(
-        _run_function(
-            php_requirements=php_requirements,
-            configure_function="system_trust_configure",
-            configure_params=["true"], # first param: verbose
-        )
-    )
-
-    # https://github.com/opnsense/core/blob/cbaf7cee1f0a6fabd1ec4c752a5d169c402976dc/src/etc/inc/system.inc#L864
-    cmd_output.append(
-        _run_function(
-            php_requirements=php_requirements,
-            configure_function="system_hostname_configure",
-            configure_params=["true"], # first param: verbose
-        )
-    )
-
-    # https://github.com/opnsense/core/blob/cbaf7cee1f0a6fabd1ec4c752a5d169c402976dc/src/etc/inc/system.inc#L506
-    cmd_output.append(
-        _run_function(
-            php_requirements=php_requirements,
-            configure_function="system_resolver_configure",
-            configure_params=["true"], # first param: verbose
-        )
-    )
-
-    # https://github.com/opnsense/core/blob/cbaf7cee1f0a6fabd1ec4c752a5d169c402976dc/src/etc/inc/plugins.inc#L251
-    cmd_output.append(
-        _run_function(
-            php_requirements=php_requirements,
-            configure_function="plugins_configure",
-            configure_params=["'dns'", "true"], # first param: hook, second param: verbose
-        )
-    )
-
-    # https://github.com/opnsense/core/blob/cbaf7cee1f0a6fabd1ec4c752a5d169c402976dc/src/etc/inc/plugins.inc#L251
-    cmd_output.append(
-        _run_function(
-            php_requirements=php_requirements,
-            configure_function="plugins_configure",
-            configure_params=["'dhcp'", "true"], # first param: hook, second param: verbose
-        )
-    )
-
-    # https://github.com/opnsense/core/blob/cbaf7cee1f0a6fabd1ec4c752a5d169c402976dc/src/etc/inc/filter.inc#L125
-    cmd_output.append(
-        _run_function(
-            php_requirements=php_requirements,
-            configure_function="filter_configure",
-            configure_params=["true"], # first param: verbose
-        )
-    )
-    return cmd_output
