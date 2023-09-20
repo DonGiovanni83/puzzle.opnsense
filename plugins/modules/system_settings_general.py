@@ -29,6 +29,12 @@ options:
     - Do not use V(local)as a domain name. It will cause local hosts running mDNS (avahi, bonjour, etc.) to be unable to resolve local hosts not running mDNS.
     type: str
     required: false
+  timezone:
+    description:
+    - The timezone e.g. V((Europe/Zurich), V(Etc/GMT+7), V(America/New_York), etc.
+    - A list of valid timezones can be found in the OPNsense webui or in the V(/usr/share/zoneinfo/) directory on your OPNsense.
+    type: str
+    required: false
 """
 
 EXAMPLES = r"""
@@ -39,10 +45,15 @@ EXAMPLES = r"""
 - name: Set domain to mycorp.com
   puzzle.opnsense.system_settings_general:
     domain: mycorp.com
+
+- name: Set timezone to Europe/Zurich
+  puzzle.opnsense.system_settings_general:
+    timezone: Europe/Zurich
 """
 
 RETURN = r""" # """
 
+import os
 import re
 
 from ansible.module_utils.basic import AnsibleModule
@@ -53,6 +64,7 @@ from ansible_collections.puzzle.opnsense.plugins.module_utils import (
 
 HOSTNAME_INDEX = 1
 DOMAIN_INDEX = 2
+TIMEZONE_INDEX = 9
 
 def get_hostname(settings):
     return settings[HOSTNAME_INDEX]
@@ -61,6 +73,8 @@ def get_hostname(settings):
 def get_domain(settings):
     return settings[DOMAIN_INDEX]
 
+def get_timezone(settings):
+    return settings[TIMEZONE_INDEX]
 
 def is_hostname(hostname: str) -> bool:
     """
@@ -88,21 +102,33 @@ def is_domain(domain: str) -> bool:
     domain_regex = r"^(?:(?:[a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*(?:[a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$"
     return re.match(domain_regex, domain) is not None
 
+def is_timezone(tz: str) -> bool:
+    """
+    Validates timezones
+
+    :param tz: A string containing the timezone
+
+    :return: True if the provided timezone is valid, False if it's invalid
+    """
+    tz_path = os.path.join("/usr/share/zoneinfo/", tz)
+    return os.path.isfile(tz_path)
+
 def main():
     """
     Main function of the system_settings_general module
     """
 
     module_args = dict(
-        hostname=dict(type="str", required=False),
         domain=dict(type="str", required=False),
+        hostname=dict(type="str", required=False),
+        timezone=dict(type="str", required=False),
     )
 
     module = AnsibleModule(
         argument_spec=module_args,
         supports_check_mode=True,
         required_one_of=[
-            ["domain", "hostname"],
+            ["domain", "hostname", "timezone"],
         ],
     )
 
@@ -116,12 +142,14 @@ def main():
 
     hostname_param = module.params.get("hostname")
     domain_param = module.params.get("domain")
+    timezone_param = module.params.get("timezone")
 
     with config_utils.OPNsenseConfig(check_mode=module.check_mode) as config_mgr:
         # Get system settings
         system_settings = config_mgr["system"]
         current_hostname = get_hostname(system_settings)
         current_domain = get_domain(system_settings)
+        current_timezone = get_timezone(system_settings)
 
         if hostname_param:
             if not is_hostname(hostname_param):
@@ -136,6 +164,13 @@ def main():
 
             if domain_param != current_domain["domain"]:
                 current_domain["domain"] = domain_param
+
+        if timezone_param:
+            if not is_timezone(timezone_param):
+                module.fail_json(msg="Invalid timezone parameter specified")
+
+            if timezone_param != current_timezone["timezone"]:
+                current_timezone["timezone"] = timezone_param
 
         if config_mgr.changed:
             result["diff"] = config_mgr.diff
