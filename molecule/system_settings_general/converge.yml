@@ -1,0 +1,20 @@
+---
+- name: converge
+  hosts: all
+  become: yes
+  tasks:
+    - name: Converge - Set a hostname
+      puzzle.opnsense.system_settings_general:
+        hostname: "tests"
+      register: hostname
+
+    - name: Converge - Set a hostname
+      puzzle.opnsense.system_settings_general:
+        domain: "my-domain.local"
+      register: domain
+
+    - ansible.builtin.debug:
+        var: hostname
+
+    - ansible.builtin.debug:
+        var: domain
