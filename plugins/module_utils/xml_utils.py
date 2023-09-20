@@ -3,9 +3,9 @@
 
 """Utilities for XML operations."""
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
 
-from typing import Union, Optional, List, Set
+from typing import Union, Optional, List
 from xml.etree.ElementTree import Element
 
 __metaclass__ = type
@@ -134,7 +134,7 @@ def _process_dict_list(tag: str, input_dict: dict, root: Optional[Element]) -> O
 # --- ElementTree to Dict --- #
 ###############################
 
-def etree_to_dict(input_etree: Element) -> dict:
+def etree_to_dict(input_etree: Element) -> Union[str, dict]:
     """
     Converts an ElementTree.Element structure to a Python dictionary.
 
@@ -148,21 +148,22 @@ def etree_to_dict(input_etree: Element) -> dict:
     if len(input_children) == 0:
         return {input_etree.tag: input_etree.text}
 
-    unique_input_tags: Set[str] = set([input_child.tag for input_child in input_etree])
-
-    # if any group has more than one sub element a list must be constructed
-    if len(unique_input_tags) != len(input_children):
-        child_list: list = []
-        for child in input_children:
-            child_list.append(etree_to_dict(child))
-        return {input_etree.tag: child_list}
-
-    # here all children have a unique tag, therefore a dict will be built
-    child_dict: dict = {}
+    result_dict: dict = {}
 
     for child in input_children:
-        sub = etree_to_dict(child)
+        child_dict: dict = etree_to_dict(child)
 
-        child_dict = {**child_dict, **sub}
+        child_tag, child_value = list(child_dict.items())[0]
+        if child_tag in result_dict:
+            # If the tag already exists in the result_dict, convert it to a list
+            existing_value = result_dict[child_tag]
+            if not isinstance(existing_value, list):
+                result_dict[child_tag] = [existing_value]
+            result_dict[child_tag].append(child_value)
+        else:
+            if child.tag == list(child_dict.keys())[0]:
+                result_dict.update(**child_dict)
+            else:
+                result_dict[child.tag] = child_dict
 
-    return {input_etree.tag: child_dict}
+    return {input_etree.tag: result_dict}
