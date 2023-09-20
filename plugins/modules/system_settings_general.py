@@ -62,19 +62,6 @@ from ansible_collections.puzzle.opnsense.plugins.module_utils import (
     system_settings_general_utils,
 )
 
-HOSTNAME_INDEX = 1
-DOMAIN_INDEX = 2
-TIMEZONE_INDEX = 9
-
-def get_hostname(settings):
-    return settings[HOSTNAME_INDEX]
-
-
-def get_domain(settings):
-    return settings[DOMAIN_INDEX]
-
-def get_timezone(settings):
-    return settings[TIMEZONE_INDEX]
 
 def is_hostname(hostname: str) -> bool:
     """
@@ -147,36 +134,34 @@ def main():
     with config_utils.OPNsenseConfig(check_mode=module.check_mode) as config_mgr:
         # Get system settings
         system_settings = config_mgr["system"]
-        current_hostname = get_hostname(system_settings)
-        current_domain = get_domain(system_settings)
-        current_timezone = get_timezone(system_settings)
 
         if hostname_param:
             if not is_hostname(hostname_param):
                 module.fail_json(msg="Invalid hostname parameter specified")
 
-            if hostname_param != current_hostname["hostname"]:
-                current_hostname["hostname"] = hostname_param
+            if hostname_param != system_settings["hostname"]:
+                system_settings["hostname"] = hostname_param
 
         if domain_param:
             if not is_domain(domain_param):
                 module.fail_json(msg="Invalid domain parameter specified")
 
-            if domain_param != current_domain["domain"]:
-                current_domain["domain"] = domain_param
+            if domain_param != system_settings["domain"]:
+                system_settings["domain"] = domain_param
 
         if timezone_param:
             if not is_timezone(timezone_param):
                 module.fail_json(msg="Invalid timezone parameter specified")
 
-            if timezone_param != current_timezone["timezone"]:
-                current_timezone["timezone"] = timezone_param
+            if timezone_param != system_settings["timezone"]:
+                system_settings["timezone"] = timezone_param
 
         if config_mgr.changed:
             result["diff"] = config_mgr.diff
             result["changed"] = True
 
         if config_mgr.changed and not module.check_mode:
+            config_mgr["system"] = system_settings
             config_mgr.save()
             result[
                 "opnsense_configure_output"
