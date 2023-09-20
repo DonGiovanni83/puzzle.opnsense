@@ -3,7 +3,7 @@
 
 """Tests for the plugins.module_utils.xml_utils module."""
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
@@ -19,11 +19,8 @@ from ansible_collections.puzzle.opnsense.plugins.module_utils import xml_utils
 # --- Dict to ElementTree --- #
 ###############################
 
-@pytest.mark.parametrize("input_data", [
-    1,
-    "foo",
-    None
-])
+
+@pytest.mark.parametrize("input_data", [1, "foo", None])
 def test_dict_to_etree__primitive_values(input_data: Optional[Union[int, str]]) -> None:
     """
     Test converting a primitive value to an ElementTree.Element.
@@ -43,11 +40,14 @@ def test_dict_to_etree__primitive_values(input_data: Optional[Union[int, str]]) 
     assert output_etree[0].text == input_data
 
 
-@pytest.mark.parametrize("input_data", [
-    {"foo": 1},
-    {"foo": "bar"},
-    {"foo": 1, "bar": None},
-])
+@pytest.mark.parametrize(
+    "input_data",
+    [
+        {"foo": 1},
+        {"foo": "bar"},
+        {"foo": 1, "bar": None},
+    ],
+)
 def test_dict_to_etree__tags_on_simple_dicts(input_data: dict) -> None:
     """
     Test converting a simple dictionary to an ElementTree.Element.
@@ -114,10 +114,7 @@ def test_dict_to_etree__dict_recursion() -> None:
     assert children[0].text == 1
 
 
-@pytest.mark.parametrize("input_data", [
-    [1, 2, 3, 4],
-    ["a", "b", "c", "d"]
-])
+@pytest.mark.parametrize("input_data", [[1, 2, 3, 4], ["a", "b", "c", "d"]])
 def test_dict_to_etree__primitive_list(input_data: list) -> None:
     """
     Test converting a primitive list to multiple ElementTree.Elements.
@@ -174,10 +171,7 @@ def test_dict_to_etree__list_with_dicts_or_sub_lists() -> None:
     assert children[2].text == 3
 
 
-@pytest.mark.parametrize("input_data", [
-    {},
-    []
-])
+@pytest.mark.parametrize("input_data", [{}, []])
 def test_dict_to_etree__empty_input(input_data: Union[dict, list]) -> None:
     """
     Test that when an empty dictionary or an empty list is passed as input,
@@ -247,11 +241,11 @@ def etree_root(request: pytest.FixtureRequest) -> Element:
     yield tree.getroot()
 
 
-@pytest.mark.parametrize("etree_root", [
-    "<test>1</test>",
-    "<test>some_string</test>",
-    "<test/>"
-], indirect=True)
+@pytest.mark.parametrize(
+    "etree_root",
+    ["<test>1</test>", "<test>some_string</test>", "<test/>"],
+    indirect=True,
+)
 def test_etree_to_dict__primitive_values(etree_root: Element) -> None:
     """
     Test converting an ElementTree.Element containing a primitive value to a dictionary.
@@ -269,10 +263,14 @@ def test_etree_to_dict__primitive_values(etree_root: Element) -> None:
     assert len(output_dict) == 1
 
 
-@pytest.mark.parametrize("etree_root", [
-    "<foo><bar>1</bar></foo>",
-    "<foo><bar>some_string</bar></foo>",
-], indirect=True)
+@pytest.mark.parametrize(
+    "etree_root",
+    [
+        "<foo><bar>1</bar></foo>",
+        "<foo><bar>some_string</bar></foo>",
+    ],
+    indirect=True,
+)
 def test_etree_to_dict__simple_children(etree_root: Element) -> None:
     """
     Test converting a simple ElementTree.Element with child elements to a dictionary.
@@ -295,40 +293,13 @@ def test_etree_to_dict__simple_children(etree_root: Element) -> None:
         assert child.tag in list(output_dict["foo"].keys())
 
 
-@pytest.mark.parametrize("etree_root", [
-    "<foo><bar>1</bar><bar>2</bar></foo>",
-    "<foo><bar>test</bar><bar>cat</bar></foo>",
-], indirect=True)
-def test_etree_to_dict__simple_tree(etree_root: Element) -> None:
-    """
-    Test converting an ElementTree.Element with multiple child elements of the same tag to a list in the dictionary.
-
-    Given an ElementTree.Element with a single tag and multiple child elements of the same tag,
-    the function should convert it into a dictionary with the tag as the key and a list of values representing
-    the child elements.
-
-    Example:
-    - Input:
-        <foo>
-            <bar>1</bar>
-            <bar>2</bar>
-            <bar>3</bar>
-        </foo>
-    - Expected Output: {"foo": [{ "bar" : 1 }, {"bar": 2 }, {"bar" :3 }]}
-    """
-    output_dict: dict = xml_utils.etree_to_dict(etree_root)
-
-    assert isinstance(output_dict["foo"], list)
-    assert len(output_dict["foo"]) == len(list(etree_root))
-
-    input_children: List[Element] = list(etree_root)
-    for child in input_children:
-        assert any(list(filter(lambda i: child.tag in list(i.keys()), output_dict["foo"])))
-
-
-@pytest.mark.parametrize("etree_root", [
-    "<foo><bar><bob>1</bob><cat>2</cat></bar><john><bob>3</bob><cat>4</cat></john></foo>"
-], indirect=True)
+@pytest.mark.parametrize(
+    "etree_root",
+    [
+        "<foo><bar><bob>1</bob><cat>2</cat></bar><john><bob>3</bob><cat>4</cat></john></foo>"
+    ],
+    indirect=True,
+)
 def test_etree_to_dict__multiple_nested_dicts(etree_root: Element) -> None:
     """
     Test converting an ElementTree.Element structure to a nested dictionary.
@@ -373,34 +344,37 @@ def test_etree_to_dict__multiple_nested_dicts(etree_root: Element) -> None:
         assert child_dict["cat"] is not None
 
 
-@pytest.mark.parametrize("etree_root", [
-    "<foo><bar>1</bar><john>2</john><doe><bob>3</bob><bob>4</bob></doe></foo>"
-], indirect=True)
+@pytest.mark.parametrize(
+    "etree_root",
+    ["<foo><bar>1</bar><john>2</john><doe><bob>3</bob><bob>4</bob></doe><john>5</john></foo>"],
+    indirect=True,
+)
 def test_etree_to_dict__multiple_mixed_values(etree_root: Element) -> None:
     """
-    Test converting an ElementTree.Element structure to a dictionary with multiple
-    mixed (primitive and non-primitive) elements.
+      Test converting an ElementTree.Element structure to a dictionary with multiple
+      mixed (primitive and non-primitive) elements.
 
-  Example:
-    - Input:
-        <foo>
-            <bar>1</bar>
-            <john>2</john>
-            <doe>
-                <bob>3</bob>
-                <bob>4</bob>
-            </doe>
-        </foo>
-    - Expected Output:
-        {
-            "foo": {
-                "bar" : 1,
-                "john" : 2,
-                "doe": { "bob" : [3,4] }
-            }
-        }
-    :param etree_root:
-    :return:
+    Example:
+      - Input:
+          <foo>
+              <bar>1</bar>
+              <john>2</john>
+              <doe>
+                  <bob>3</bob>
+                  <bob>4</bob>
+              </doe>
+              <john>5</john>
+          </foo>
+      - Expected Output:
+          {
+              "foo": {
+                  "bar" : 1,
+                  "john" : [2,5],
+                  "doe": { "bob" : [3,4] }
+              }
+          }
+      :param etree_root:
+      :return:
     """
     output_dict: dict = xml_utils.etree_to_dict(etree_root)
 
@@ -411,10 +385,10 @@ def test_etree_to_dict__multiple_mixed_values(etree_root: Element) -> None:
     # check "bar" and "john"
     assert isinstance(foo["bar"], str)
     assert foo["bar"] == "1"
-    assert isinstance(foo["john"], str)
-    assert foo["john"] == "2"
+    assert isinstance(foo["john"], list)
+    assert foo["john"][0] == "2"
+    assert foo["john"][1] == "5"
 
     # check "doe" and "bob"
     assert isinstance(foo["doe"], dict)
     assert isinstance(foo["doe"]["bob"], list)
-
