@@ -540,7 +540,10 @@ def test_set_with_missing_element(sample_config_path):
 ###
 
 
+# pylint: disable=too-few-public-methods
 class TestType(ListEnum):
+    """Enumeration for Test Types"""
+
     __test__ = False
     ONE = "one"
     TWO = "two"
@@ -548,6 +551,7 @@ class TestType(ListEnum):
 
 @dataclasses.dataclass
 class TestConfigObject(ConfigObject):
+    """Configuration Object representation"""
 
     __test__ = False
     name: str
@@ -557,12 +561,16 @@ class TestConfigObject(ConfigObject):
 
     @classmethod
     def preprocess_ansible_module_params(cls, raw_params: dict) -> dict:
+        """Preprocess params from Ansible module for TestConfigObject"""
+
         params: dict = {**raw_params}
         params["pretty_name"] = params["name"].capitalize()
         return params
 
     @classmethod
     def preprocess_from_xml_data(cls, raw_xml_data: dict) -> dict:
+        """Preprocess raw XML data for TestConfigObject instantiation"""
+
         params: dict = {**raw_xml_data}
         params["pretty_name"] = params["name"].capitalize()
         return params
@@ -570,6 +578,7 @@ class TestConfigObject(ConfigObject):
 
 @dataclasses.dataclass
 class TestNestedConfigObject(ConfigObject):
+    """Nested Configuration Object representation"""
 
     __test__ = False
     sub_element: TestConfigObject
@@ -577,6 +586,8 @@ class TestNestedConfigObject(ConfigObject):
 
     @classmethod
     def preprocess_ansible_module_params(cls, raw_params: dict) -> dict:
+        """Preprocess params from Ansible module for TestNestedConfigObject"""
+
         return {"sub_element": {"name": raw_params["sub_element_name"]}}
 
 
@@ -606,6 +617,8 @@ def test_config_object_preprocessed_parameters() -> None:
 
 
 def test_simple_obj_root_tag_name() -> None:
+    """Test TestConfigObject creation from simple XML with root tag"""
+
     simple: str = """
         <test>
             <name>test_object</name>
@@ -623,6 +636,8 @@ def test_simple_obj_root_tag_name() -> None:
 
 
 def test_simple_obj_extra_data() -> None:
+    """Test TestConfigObject creation from XML with extra data"""
+
     simple: str = """
         <test>
             <name>test_object</name>
@@ -644,6 +659,9 @@ def test_simple_obj_extra_data() -> None:
 
 
 def test_simple_obj_extra_data_to_xml() -> None:
+    """Test TestConfigObject extra data inclusion in generated XML"""
+
+    # pylint: disable=unexpected-keyword-arg
     simple_obj: TestConfigObject = TestConfigObject(
         name="test",
         pretty_name="Test Object",
@@ -661,6 +679,9 @@ def test_simple_obj_extra_data_to_xml() -> None:
 
 
 def test_nested_obj_extra_data_to_xml() -> None:
+    """Test nested TestConfigObject extra data inclusion in generated XML"""
+
+    # pylint: disable=unexpected-keyword-arg
     nested_obj: TestNestedConfigObject = TestNestedConfigObject(
         sub_element=TestConfigObject(
             name="test",
