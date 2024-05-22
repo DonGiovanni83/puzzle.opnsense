@@ -14,6 +14,8 @@ from ansible_collections.puzzle.opnsense.plugins.module_utils.config_utils impor
 
 from ansible_collections.puzzle.opnsense.plugins.module_utils.enum_utils import ListEnum
 
+from ansible_collections.puzzle.opnsense.plugins.module_utils.config_utils import ConfigObject
+
 
 # pylint: disable=too-few-public-methods
 class FirewallRuleAction(ListEnum):
@@ -274,7 +276,7 @@ class FirewallRuleTarget:
 
 # pylint: disable=too-many-instance-attributes, fixme
 @dataclass
-class FirewallRule:
+class FirewallRule(ConfigObject):
     """Used to represent a firewall rule."""
 
     interface: str
@@ -298,27 +300,8 @@ class FirewallRule:
     category: Optional[str] = None
     statetype: FirewallRuleStateType = FirewallRuleStateType.KEEP_STATE
 
-    # TODO ChangeLog
 
-    def __post_init__(self):
-        # Manually define the fields and their expected types
-        enum_fields = {
-            "type": FirewallRuleAction,
-            "ipprotocol": IPProtocol,
-            "protocol": FirewallRuleProtocol,
-            "statetype": FirewallRuleStateType,
-            "direction": FirewallRuleDirection,
-        }
-
-        for field_name, field_type in enum_fields.items():
-            value = getattr(self, field_name)
-
-            # Check if the value is a string and the field_type is a subclass of ListEnum
-            if isinstance(value, str) and issubclass(field_type, ListEnum):
-                # Convert string to ListEnum
-                setattr(self, field_name, field_type.from_string(value))
-
-    def to_etree(self) -> Element:
+    def get_class_data_for_xml(self) -> Element:
         """
         Converts the current FirewallRule object to an XML Element.
 
