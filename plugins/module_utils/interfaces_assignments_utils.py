@@ -16,7 +16,7 @@ from ansible_collections.puzzle.opnsense.plugins.module_utils import (
     opnsense_utils,
 )
 from ansible_collections.puzzle.opnsense.plugins.module_utils.config_utils import (
-    OPNsenseModuleConfig,
+    OPNsenseModuleConfig, ConfigObject
 )
 
 
@@ -39,7 +39,7 @@ class OPNSenseGetInterfacesError(Exception):
 
 
 @dataclass
-class InterfaceAssignment:
+class InterfaceAssignment(ConfigObject):
     """
     Represents a network interface with optional description and extra attributes.
 
@@ -60,22 +60,22 @@ class InterfaceAssignment:
     device: str
     descr: Optional[str] = None
 
-    # since only the above attributes are needed, the rest is handled here
-    extra_attrs: Dict[str, Any] = field(default_factory=dict, repr=False)
+    @classmethod
+    def preprocess_ansible_module_params(cls, raw_params: dict) -> dict:
+        """Preprocess params from Ansible module for TestConfigObject"""
 
-    def __init__(
-        self,
-        identifier: str,
-        device: str,
-        descr: Optional[str] = None,
-        **kwargs,
-    ):
-        self.identifier = identifier
-        self.device = device
-        if descr is not None:
-            self.descr = descr
-        self.extra_attrs = kwargs
+        for key in [ "identifier", "device" ]:
+            if key in raw_params and raw_params[key] is None:
+                raw_params.pop(key)
+        return raw_params
 
+    @classmethod
+    def preprocess_from_xaml_data(cls, raw_xml_data: dict) -> dict:
+        """Preprocess raw XML data for TestConfigObject instantiation"""
+
+        params: dict = {**raw_xml_data}
+        params["pretty_name"] = params["name"].capitalize()
+        return params
     @staticmethod
     def from_xml(element: Element) -> "InterfaceAssignment":
         """
