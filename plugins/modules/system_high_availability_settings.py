@@ -343,8 +343,8 @@ def plugins_xmlrpc_sync() -> Dict[str, str]:
     """
     Get all services on the firewall which can even be synced
     """
-    # https://github.com/opnsense/core/blob/66c684b2c66d26000129bfb161c6cbafe4175dc8/src/etc/inc/plugins.inc#L355
-    php_requirements = ["/usr/local/etc/inc/plugins.inc"]
+    # https://github.com/opnsense/core/blob/66c684b2c66d26000129bfb161c6cbafe4175dc8/src/etc/inc/ansible_collections.puzzle.opnsense.plugins.inc#L355
+    php_requirements = ["/usr/local/etc/inc/ansible_collections.puzzle.opnsense.plugins.inc"]
     php_command = """
                 foreach (plugins_xmlrpc_sync() as $key => $item) {
                     echo $key.','.$item['description'].'\n';

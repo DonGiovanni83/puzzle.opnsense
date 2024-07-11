@@ -4,15 +4,11 @@
 """
 interfaces_assignments_utils module_utils: Module_utils to configure OPNsense interface settings
 """
-
-from dataclasses import dataclass, asdict, field
-from typing import List, Optional, Dict, Any
-
-
-from xml.etree.ElementTree import Element, ElementTree, SubElement
+from dataclasses import dataclass
+from typing import List, Optional, Dict
+from xml.etree.ElementTree import Element, ElementTree
 
 from ansible_collections.puzzle.opnsense.plugins.module_utils import (
-    xml_utils,
     opnsense_utils,
 )
 from ansible_collections.puzzle.opnsense.plugins.module_utils.config_utils import (
@@ -56,171 +52,28 @@ class InterfaceAssignment(ConfigObject):
         from_ansible_module_params: Creates from Ansible params.
     """
 
-    identifier: str
     device: str
     descr: Optional[str] = None
 
     @classmethod
     def preprocess_ansible_module_params(cls, raw_params: dict) -> dict:
         """Preprocess params from Ansible module for TestConfigObject"""
-
-        for key in [ "identifier", "device" ]:
-            if key in raw_params and raw_params[key] is None:
-                raw_params.pop(key)
+        raw_params["_xml_tag"] = raw_params.pop("identifier")
+        raw_params["descr"] = raw_params.pop("description", None)
         return raw_params
 
     @classmethod
-    def preprocess_from_xaml_data(cls, raw_xml_data: dict) -> dict:
+    def preprocess_from_xml_data(cls, raw_xml_data: dict) -> dict:
         """Preprocess raw XML data for TestConfigObject instantiation"""
 
         params: dict = {**raw_xml_data}
-        params["pretty_name"] = params["name"].capitalize()
+        params["device"] = params.pop("if")
         return params
-    @staticmethod
-    def from_xml(element: Element) -> "InterfaceAssignment":
-        """
-        Converts XML element to InterfaceAssignment instance.
 
-        Args:
-            element (Element): XML element representing an interface.
-
-        Returns:
-            InterfaceAssignment: An instance with attributes derived from the XML.
-
-        Processes XML to dict, assigning 'identifier' and 'device' from keys and
-        'if' element. Assumes single key processing.
-        """
-
-        interface_assignment_dict: dict = xml_utils.etree_to_dict(element)
-
-        for key, value in interface_assignment_dict.items():
-            value["identifier"] = key  # Move the key to a new "identifier" field
-            if "if" in value:
-                if_key = value.pop("if", None)
-                if if_key is not None:
-                    value["device"] = if_key
-            break  # Only process the first key, assuming there's only one
-
-        # Return only the content of the dictionary without the key
-        return InterfaceAssignment(**interface_assignment_dict.popitem()[1])
-
-    def to_etree(self) -> Element:
-        """
-        Serializes the instance to an XML Element, including extra attributes.
-
-        Returns:
-            Element: XML representation of the instance.
-
-        Creates an XML element with identifier, device, and description. Handles
-        serialization of additional attributes, excluding specified exceptions and
-        handling specific attribute cases like alias and DHCP options. Assumes
-        boolean values translate to '1' for true.
-        """
-
-        interface_assignment_dict: dict = asdict(self)
-
-        exceptions = ["dhcphostname", "mtu", "subnet", "gateway", "media", "mediaopt"]
-
-        # Create the main element
-        main_element = Element(interface_assignment_dict["identifier"])
-
-        # Special handling for 'device' and 'descr'
-        SubElement(main_element, "if").text = interface_assignment_dict.get("device")
-        SubElement(main_element, "descr").text = interface_assignment_dict.get("descr")
-
-        # handle special cases
-        if getattr(self, "alias-subnet", None):
-            interface_assignment_dict["extra_attrs"]["alias-subnet"] = getattr(
-                self, "alias-subnet", None
-            )
-
-            interface_assignment_dict["extra_attrs"]["alias-address"] = getattr(
-                self, "alias-address", None
-            )
-
-        if getattr(self, "dhcp6-ia-pd-len", None):
-            interface_assignment_dict["extra_attrs"]["dhcp6-ia-pd-len"] = getattr(
-                self, "dhcp6-ia-pd-len", None
-            )
-
-        if getattr(self, "track6-interface", None):
-            interface_assignment_dict["extra_attrs"]["track6-interface"] = getattr(
-                self, "track6-interface", None
-            )
-
-        if getattr(self, "track6-prefix-id", None):
-            interface_assignment_dict["extra_attrs"]["track6-prefix-id"] = getattr(
-                self, "track6-prefix-id", None
-            )
-
-        # Serialize extra attributes
-        for key, value in interface_assignment_dict["extra_attrs"].items():
-            if (
-                key
-                in [
-                    "spoofmac",
-                    "alias-address",
-                    "alias-subnet",
-                    "dhcp6-ia-pd-len",
-                    "adv_dhcp_pt_timeout",
-                    "adv_dhcp_pt_retry",
-                    "adv_dhcp_pt_select_timeout",
-                    "adv_dhcp_pt_reboot",
-                    "adv_dhcp_pt_backoff_cutoff",
-                    "adv_dhcp_pt_initial_interval",
-                    "adv_dhcp_pt_values",
-                    "adv_dhcp_send_options",
-                    "adv_dhcp_request_options",
-                    "adv_dhcp_required_options",
-                    "adv_dhcp_option_modifiers",
-                    "adv_dhcp_config_advanced",
-                    "adv_dhcp_config_file_override",
-                    "adv_dhcp_config_file_override_path",
-                    "dhcprejectfrom",
-                    "track6-interface",
-                    "track6-prefix-id",
-                ]
-                and value is None
-            ):
-                sub_element = SubElement(main_element, key)
-            if value is None and key not in exceptions:
-                continue
-            sub_element = SubElement(main_element, key)
-            if value is True:
-                sub_element.text = "1"
-            elif value is not None:
-                sub_element.text = str(value)
-
-        return main_element
-
-    @classmethod
-    def from_ansible_module_params(cls, params: dict) -> "InterfaceAssignment":
-        """
-        Creates an instance from Ansible module parameters.
-
-        Args:
-            params (dict): Parameters from an Ansible module.
-
-        Returns:
-            User: An instance of InterfaceAssignment.
-
-        Filters out None values from the provided parameters and uses them to
-        instantiate the class, focusing on 'identifier', 'device', and 'descr'.
-        """
-
-        interface_assignment_dict = {
-            "identifier": params.get("identifier"),
-            "device": params.get("device"),
-            "descr": params.get("description"),
-        }
-
-        interface_assignment_dict = {
-            key: value
-            for key, value in interface_assignment_dict.items()
-            if value is not None
-        }
-
-        return cls(**interface_assignment_dict)
+    def preprocess_instance_data_for_xml(self) -> dict:
+        fields: dict = super().preprocess_instance_data_for_xml()
+        fields["if"] = fields.pop("device")
+        return fields
 
 
 class InterfacesSet(OPNsenseModuleConfig):
@@ -261,7 +114,7 @@ class InterfacesSet(OPNsenseModuleConfig):
         element_tree_interfaces: Element = self.get("interfaces")
 
         return [
-            InterfaceAssignment.from_xml(element_tree_interface)
+            InterfaceAssignment.from_xml_element(element_tree_interface)
             for element_tree_interface in element_tree_interfaces
         ]
 
@@ -365,7 +218,7 @@ class InterfacesSet(OPNsenseModuleConfig):
         )
 
         identifier_list_set: set = set(  # pylint: disable=R1718
-            [assignment.identifier for assignment in self._interfaces_assignments]
+            [assignment.xml_tag_name for assignment in self._interfaces_assignments]
         )
 
         device_interfaces_set: set = set(self.get_interfaces())
@@ -382,13 +235,12 @@ class InterfacesSet(OPNsenseModuleConfig):
                 interface
                 for interface in self._interfaces_assignments
                 if interface.device == interface_assignment.device
-                or interface.identifier == interface_assignment.identifier
+                   or interface.identifier == interface_assignment.identifier
             ),
             None,
         )
 
         if not interface_to_update:
-
             interface_to_create: InterfaceAssignment = InterfaceAssignment(
                 identifier=interface_assignment.identifier,
                 device=interface_assignment.device,
@@ -400,8 +252,8 @@ class InterfacesSet(OPNsenseModuleConfig):
             return
 
         if (
-            interface_assignment.device in free_interfaces
-            or interface_assignment.device == interface_to_update.device
+                interface_assignment.device in free_interfaces
+                or interface_assignment.device == interface_to_update.device
         ):
 
             if interface_assignment.identifier in identifier_list_set:

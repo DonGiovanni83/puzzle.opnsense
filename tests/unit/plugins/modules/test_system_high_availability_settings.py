@@ -57,7 +57,7 @@ TEST_VERSION_MAP = {
                 "/usr/local/etc/inc/interfaces.inc",
                 "/usr/local/etc/inc/util.inc",
                 "/usr/local/etc/inc/config.inc",
-                "/usr/local/etc/inc/plugins.inc",
+                "/usr/local/etc/inc/ansible_collections.puzzle.opnsense.plugins.inc",
             ],
         },
     },

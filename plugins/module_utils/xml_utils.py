@@ -218,7 +218,7 @@ def elements_equal(e1, e2) -> bool:
         # 1. Check if texts are exactly the same (ignoring whitespaces and None)
         # 2. or check if one text is '1' and the other is None with no children
         return (
-            (_is_whitespace_or_none(e1.text) == _is_whitespace_or_none(e2.text))
+            (_is_whitespace_or_none(str(e1.text)) == _is_whitespace_or_none(str(e2.text)))
             or (e1.text == "1" and not e2.text and not e2)
             or (e2.text == "1" and not e1.text and not e1)
         )

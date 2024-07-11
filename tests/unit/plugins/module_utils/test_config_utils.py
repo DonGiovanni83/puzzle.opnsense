@@ -606,7 +606,7 @@ class TestConfigObject(ConfigObject):
     name: str
     pretty_name: str
     type: TestType
-    _object_root_tag_name: str = "test"
+    _xml_tag_name: str = "test"
 
     @classmethod
     def preprocess_ansible_module_params(cls, raw_params: dict) -> dict:
@@ -631,7 +631,7 @@ class TestNestedConfigObject(ConfigObject):
 
     __test__ = False
     sub_element: TestConfigObject
-    _object_root_tag_name: str = "nested"
+    _xml_tag_name: str = "nested"
 
     @classmethod
     def preprocess_ansible_module_params(cls, raw_params: dict) -> dict:

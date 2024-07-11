@@ -497,20 +497,26 @@ class ConfigObject:
 
     @property
     @abc.abstractmethod
-    def _object_root_tag_name(self) -> str:
-        raise NotImplementedError()
+    def xml_tag_name(self) -> str:
+        if not hasattr(self, "_xml_tag_name"):
+            setattr(self, "_xml_tag_name", "")
+
+        return self._xml_tag_name
+
+    @xml_tag_name.setter
+    def xml_tag_name(self, tag_name: str) -> None:
+        self._xml_tag_name = tag_name
 
     @property
-    @abc.abstractmethod
     def extra_data(self) -> dict:
-        if not hasattr(self, "_extra_args"):
-            setattr(self, "_extra_args", {})
+        if not hasattr(self, "_extra_data"):
+            setattr(self, "_extra_data", {})
 
-        return self._extra_args
+        return self._extra_data
 
     @extra_data.setter
     def extra_data(self, data: dict) -> None:
-        setattr(self, "_extra_args", data)
+        setattr(self, "_extra_data", data)
 
     def __post_init__(self):
         """
@@ -554,7 +560,10 @@ class ConfigObject:
         :return: instance of the config object class.
         """
         preprocessed_params: dict = cls.preprocess_ansible_module_params(params)
-        return cls(**preprocessed_params)
+        _xml_tag: str = preprocessed_params.pop("_xml_tag")
+        instance = cls(**preprocessed_params)
+        instance.xml_tag_name = _xml_tag
+        return instance
 
     @classmethod
     def preprocess_from_xml_data(cls, raw_xml_data: dict) -> dict:
@@ -573,7 +582,7 @@ class ConfigObject:
         :param element: XML Element to get data from
         :return: Dataclass object
         """
-        element_data: dict = xml_utils.etree_to_dict(element)[cls._object_root_tag_name]
+        element_data: dict = xml_utils.etree_to_dict(element)[element.tag]
         constructor_data: dict = cls.preprocess_from_xml_data(element_data)
 
         class_attribute_names: List[str] = list(
@@ -588,8 +597,21 @@ class ConfigObject:
             del constructor_data[k]
 
         new_obj = cls(**constructor_data)
+        new_obj.xml_tag_name = element.tag
         new_obj.extra_data = _extra_data
         return new_obj
+
+    def preprocess_instance_data_for_xml(self) -> dict:
+        """
+        Performs the mapping of the instance data to a dictionary ready to be
+        written to an XML Element.
+        :return: preprocessed instance data
+        """
+        return {
+            field.name: getattr(self, field.name)
+            for field in dataclasses.fields(self)
+            if not field.name.startswith("_")
+        }
 
     def get_class_data_for_xml(self) -> dict:
         """
@@ -597,11 +619,7 @@ class ConfigObject:
         :return: dictionary of class data for xml object creation.
         """
         # create a dict which is a shallow copy of self
-        fields: dict = {
-            field.name: getattr(self, field.name)
-            for field in dataclasses.fields(self)
-            if not field.name.startswith("_")
-        }
+        fields: dict = self.preprocess_instance_data_for_xml()
 
         for f_name, f_val in fields.items():
             # for any field that is of subtype of ConfigObject, i.e. it has
@@ -613,11 +631,13 @@ class ConfigObject:
             elif hasattr(f_val, "value"):
                 fields[f_name] = f_val.value
 
-            if isinstance(f_val, bool):
+            if isinstance(f_val, bool) or isinstance(f_val, int):
                 fields[f_name] = "1" if f_val else "0"
 
         # extract extra_data to write it correctly to XML
         for e_name, e_val in self.extra_data.items():
+            if isinstance(e_val, bool) or isinstance(e_val, int):
+                fields[e_name] = "1" if e_val else "0"
             fields[e_name] = e_val
 
         return fields
@@ -628,4 +648,4 @@ class ConfigObject:
         :return: ElementTree.Element object of the class instance
         """
         class_xml_data: dict = self.get_class_data_for_xml()
-        return xml_utils.dict_to_etree(self._object_root_tag_name, class_xml_data)[0]
+        return xml_utils.dict_to_etree(self._xml_tag_name, class_xml_data)[0]
