@@ -8,8 +8,10 @@
         identifier: "lan"
         device: "em1"
         description: "LAN1"
-        block_private: true
-        block_bogons: true
+        enabled: true
+        locked: false
+        block_private: false
+        block_bogons: false
 
     - name: Test interface wan, device update from em2 to em3
       puzzle.opnsense.interface:

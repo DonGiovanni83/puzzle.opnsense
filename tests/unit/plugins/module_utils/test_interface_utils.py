@@ -1158,10 +1158,10 @@ def test_wan_interface_assignment_to_etree():
         gateway=None,
         media=None,
         mediaopt=None,
-        block_bogons=1,
-        block_private=1,
+        block_bogons=True,
+        block_private=True,
         ipaddrv6="dhcp6",
-        lock=1,
+        locked=True,
     )
     setattr(test_interface_config, "dhcp6-ia-pd-len", "0")
 
@@ -1176,14 +1176,14 @@ def test_lan_interface_assignment_to_etree():
     test_interface_config: InterfaceConfig = InterfaceConfig(
         identifier="lan",
         device="em1",
-        enable=1,
+        enabled=True,
         descr="LAN",
         ipaddr="192.168.56.10",
         spoofmac=None,
         subnet="21",
-        block_bogons=1,
+        block_bogons=True,
         ipaddrv6="track6",
-        lock=1,
+        locked=True,
     )
     setattr(test_interface_config, "track6-interface", "wan")
     setattr(test_interface_config, "track6-prefix-id", "0")
@@ -1197,7 +1197,7 @@ def test_lan_interface_assignment_to_etree():
 
 def test_opt1_interface_assignment_to_etree():
     test_interface_config: InterfaceConfig = InterfaceConfig(
-        identifier="opt1", device="em3", descr="DMZ", spoofmac=None, lock=1
+        identifier="opt1", device="em3", descr="DMZ", spoofmac=None, locked=True
     )
     test_element = test_interface_config.to_etree()
     orig_etree: Element = ElementTree.fromstring(TEST_XML)
@@ -1211,9 +1211,9 @@ def test_opt2_interface_assignment_to_etree():
         identifier="opt2",
         device="em0",
         descr="VAGRANT",
-        enable=1,
+        enabled=True,
         spoofmac=None,
-        lock=1,
+        locked=True,
         ipaddr="dhcp",
         dhcphostname=None,
         dhcprejectfrom=None,
@@ -1250,13 +1250,14 @@ def test_lo0_interface_assignment_to_etree():
         identifier="lo0",
         device="lo0",
         descr="Loopback",
-        enable=1,
+        enabled=True,
         ipaddr="127.0.0.1",
         ipaddrv6="::1",
         subnet="8",
         subnetv6="128",
         type="none",
         virtual="1",
+        locked=False,
     )
 
     test_element = test_interface_config.to_etree()

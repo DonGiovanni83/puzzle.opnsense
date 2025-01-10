@@ -68,6 +68,8 @@ class InterfaceConfig:
     device: str
     block_private: bool
     block_bogons: bool
+    enabled: bool = False
+    locked: bool = False
     descr: Optional[str] = None
 
     # since only the above attributes are needed, the rest is handled here
@@ -77,6 +79,8 @@ class InterfaceConfig:
         self,
         identifier: str,
         device: str,
+        enabled: bool = False,
+        locked: bool = False,
         block_private: bool = False,
         block_bogons: bool = False,
         descr: Optional[str] = None,
@@ -86,6 +90,8 @@ class InterfaceConfig:
         self.device = device
         self.block_private = block_private
         self.block_bogons = block_bogons
+        self.enabled = enabled
+        self.locked = locked
         if descr is not None:
             self.descr = descr
         self.extra_attrs = kwargs
@@ -115,13 +121,15 @@ class InterfaceConfig:
                     value["device"] = if_key
                     
             mapped_fields: List[Tuple] = [
+                ("enable", "enabled"),
+                ("lock", "locked"),
                 ("blockpriv", "block_private"),
                 ("blockbogons", "block_bogons"),
             ]
             
             for xml_key, class_field in mapped_fields:
                 if xml_key in value:
-                    value[class_field] = value.pop(xml_key)
+                    value[class_field] = bool(int(value.pop(xml_key, None)))
             
             break  # Only process the first key, assuming there's only one
 
@@ -155,6 +163,8 @@ class InterfaceConfig:
         mapped_fields: List[Tuple] = [
             ("blockpriv", "block_private"),
             ("blockbogons", "block_bogons"),
+            ("enable", "enabled"),
+            ("lock", "locked"),
         ]
         for xml_key, class_field in mapped_fields:
             if getattr(self, class_field):
@@ -244,6 +254,8 @@ class InterfaceConfig:
             "identifier": params.get("identifier"),
             "device": params.get("device"),
             "descr": params.get("description"),
+            "enabled": params.get("enabled"),
+            "locked": params.get("locked"),
             "block_private": params.get("block_private", None),
             "block_bogons": params.get("block_bogons", None)
         }

@@ -37,6 +37,17 @@ options:
       - Input will be trimmed, as no whitespaces are allowed.
     type: str
     required: false
+  enabled:
+    description:
+      - Enable or disable the interface
+    type: bool
+    required: false
+    default: false
+  locked:
+    description:
+      - Prevent interface removal
+    type: bool
+    required: false
   block_private:
     description:
         - When set, this option blocks traffic from IP addresses that are reserved for private networks as per RFC 1918 (10/8, 172.16/12, 192.168/16) as well as loopback addresses (127/8) and Carrier-grade NAT addresses (100.64/10). This option should only be set for WAN interfaces that use the public IP address space.
@@ -58,6 +69,7 @@ EXAMPLES = r'''
 - name: Create new config
   puzzle.opnsense.interface:
     identifier: "lan"
+    enabled: true
     device: "vtnet1"
     description: "lan_interface"
     block_bogons: true
@@ -109,8 +121,10 @@ def main():
         "identifier": {"type": "str", "required": True},
         "device": {"type": "str", "required": True},
         "description": {"type": "str", "required": False},
-        "block_private": {"type": "bool", "required": False},
-        "block_bogons": {"type": "bool", "required": False}
+        "enabled": {"type": "bool", "required": False, "default": False},
+        "locked": {"type": "bool", "required": False, "default": False},
+        "block_private": {"type": "bool", "required": False, "default": False},
+        "block_bogons": {"type": "bool", "required": False, "default": False}
     }
 
     module = AnsibleModule(
