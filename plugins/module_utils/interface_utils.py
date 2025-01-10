@@ -39,7 +39,7 @@ class OPNSenseGetInterfacesError(Exception):
 
 
 @dataclass
-class InterfaceAssignment:
+class InterfaceConfig:
     """
     Represents a network interface with optional description and extra attributes.
 
@@ -77,15 +77,15 @@ class InterfaceAssignment:
         self.extra_attrs = kwargs
 
     @staticmethod
-    def from_xml(element: Element) -> "InterfaceAssignment":
+    def from_xml(element: Element) -> "InterfaceConfig":
         """
-        Converts XML element to InterfaceAssignment instance.
+        Converts XML element to InterfaceConfig instance.
 
         Args:
             element (Element): XML element representing an interface.
 
         Returns:
-            InterfaceAssignment: An instance with attributes derived from the XML.
+            InterfaceConfig: An instance with attributes derived from the XML.
 
         Processes XML to dict, assigning 'identifier' and 'device' from keys and
         'if' element. Assumes single key processing.
@@ -102,7 +102,7 @@ class InterfaceAssignment:
             break  # Only process the first key, assuming there's only one
 
         # Return only the content of the dictionary without the key
-        return InterfaceAssignment(**interface_assignment_dict.popitem()[1])
+        return InterfaceConfig(**interface_assignment_dict.popitem()[1])
 
     def to_etree(self) -> Element:
         """
@@ -194,7 +194,7 @@ class InterfaceAssignment:
         return main_element
 
     @classmethod
-    def from_ansible_module_params(cls, params: dict) -> "InterfaceAssignment":
+    def from_ansible_module_params(cls, params: dict) -> "InterfaceConfig":
         """
         Creates an instance from Ansible module parameters.
 
@@ -202,7 +202,7 @@ class InterfaceAssignment:
             params (dict): Parameters from an Ansible module.
 
         Returns:
-            User: An instance of InterfaceAssignment.
+            User: An instance of InterfaceConfig.
 
         Filters out None values from the provided parameters and uses them to
         instantiate the class, focusing on 'identifier', 'device', and 'descr'.
@@ -231,20 +231,20 @@ class InterfacesSet(OPNsenseModuleConfig):
     interface assignments within an OPNsense config file.
 
     Attributes:
-        _interfaces_assignments (List[InterfaceAssignment]): List of interface assignments.
+        _interfaces_assignments (List[InterfaceConfig]): List of interface assignments.
 
     Methods:
         __init__(self, path="/conf/config.xml"): Initializes InterfacesSet and loads interfaces.
         _load_interfaces() -> List["Interface_assignment"]: Loads interface assignments from config.
         changed() -> bool: Checks if current assignments differ from the loaded ones.
-        update(InterfaceAssignment: InterfaceAssignment): Updates an assignment,
+        update(InterfaceConfig: InterfaceConfig): Updates an assignment,
         errors if not found.
-        find(**kwargs) -> Optional[InterfaceAssignment]: Finds an assignment matching
+        find(**kwargs) -> Optional[InterfaceConfig]: Finds an assignment matching
         specified attributes.
         save() -> bool: Saves changes to the config file if there are modifications.
     """
 
-    _interfaces_assignments: List[InterfaceAssignment]
+    _interfaces_assignments: List[InterfaceConfig]
 
     def __init__(self, path: str = "/conf/config.xml"):
         super().__init__(
@@ -256,12 +256,12 @@ class InterfacesSet(OPNsenseModuleConfig):
         self._config_xml_tree = self._load_config()
         self._interfaces_assignments = self._load_interfaces()
 
-    def _load_interfaces(self) -> List["InterfaceAssignment"]:
+    def _load_interfaces(self) -> List["InterfaceConfig"]:
 
         element_tree_interfaces: Element = self.get("interfaces")
 
         return [
-            InterfaceAssignment.from_xml(element_tree_interface)
+            InterfaceConfig.from_xml(element_tree_interface)
             for element_tree_interface in element_tree_interfaces
         ]
 
@@ -286,7 +286,7 @@ class InterfacesSet(OPNsenseModuleConfig):
 
         return bool(str(self._interfaces_assignments) != str(self._load_interfaces()))
 
-    def get_interfaces(self) -> List[InterfaceAssignment]:
+    def get_interfaces(self) -> List[InterfaceConfig]:
         """
         Retrieves a list of interface assignments from an OPNSense device via a PHP function.
 
@@ -294,7 +294,7 @@ class InterfacesSet(OPNsenseModuleConfig):
         It processes the stdout, extracts interface data, and handles errors.
 
         Returns:
-            list[InterfaceAssignment]: A list of interface assignments parsed
+            list[InterfaceConfig]: A list of interface assignments parsed
                                        from the PHP function's output.
 
         Raises:
@@ -347,14 +347,14 @@ class InterfacesSet(OPNsenseModuleConfig):
 
         return interface_list
 
-    def update(self, interface_assignment: InterfaceAssignment) -> None:
+    def update(self, interface_assignment: InterfaceConfig) -> None:
         """
         Updates an interface assignment in the set.
 
         Checks for device existence and updates or raises errors accordingly.
 
         Args:
-            interface_assignment (InterfaceAssignment): The interface assignment to update.
+            interface_assignment (InterfaceConfig): The interface assignment to update.
 
         Raises:
             OPNSenseDeviceNotFoundError: If device is not found.
@@ -377,7 +377,7 @@ class InterfacesSet(OPNsenseModuleConfig):
                 "Device was not found on OPNsense Instance!"
             )
 
-        interface_to_update: Optional[InterfaceAssignment] = next(
+        interface_to_update: Optional[InterfaceConfig] = next(
             (
                 interface
                 for interface in self._interfaces_assignments
@@ -389,7 +389,7 @@ class InterfacesSet(OPNsenseModuleConfig):
 
         if not interface_to_update:
 
-            interface_to_create: InterfaceAssignment = InterfaceAssignment(
+            interface_to_create: InterfaceConfig = InterfaceConfig(
                 identifier=interface_assignment.identifier,
                 device=interface_assignment.device,
                 descr=interface_assignment.descr,
@@ -422,7 +422,7 @@ class InterfacesSet(OPNsenseModuleConfig):
                 "This device is already assigned, please unassign this device first"
             )
 
-    def find(self, **kwargs) -> Optional[InterfaceAssignment]:
+    def find(self, **kwargs) -> Optional[InterfaceConfig]:
         """
         Searches for an interface assignment that matches given criteria.
 
@@ -434,7 +434,7 @@ class InterfacesSet(OPNsenseModuleConfig):
             **kwargs: Key-value pairs to match against attributes of interface assignments.
 
         Returns:
-            Optional[InterfaceAssignment]: The first interface assignment that matches
+            Optional[InterfaceConfig]: The first interface assignment that matches
             the criteria, or None if no match is found.
         """
 

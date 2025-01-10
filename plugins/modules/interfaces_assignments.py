@@ -80,9 +80,9 @@ opnsense_configure_output:
 # fmt: on
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.puzzle.opnsense.plugins.module_utils.interfaces_assignments_utils import (
+from ansible_collections.puzzle.opnsense.plugins.module_utils.interface_utils import (
     InterfacesSet,
-    InterfaceAssignment,
+    InterfaceConfig,
     OPNSenseDeviceNotFoundError,
     OPNSenseDeviceAlreadyAssignedError,
     OPNSenseGetInterfacesError,
@@ -116,7 +116,7 @@ def main():
         "diff": None,
     }
 
-    interface_assignment = InterfaceAssignment.from_ansible_module_params(module.params)
+    interface_assignment = InterfaceConfig.from_ansible_module_params(module.params)
 
     with InterfacesSet() as interfaces_set:
 
