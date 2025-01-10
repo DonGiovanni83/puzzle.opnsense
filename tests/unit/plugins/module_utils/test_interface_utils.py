@@ -7,7 +7,6 @@ from unittest.mock import patch
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
-
 import pytest
 
 from ansible_collections.puzzle.opnsense.plugins.module_utils import xml_utils
@@ -656,7 +655,8 @@ TEST_XML: str = """<?xml version="1.0"?>
                 <service uuid="12aabe3a-3671-496d-aa9e-aa2018c766e3">
                 <enabled>1</enabled>
                 <name>RootFs</name>
-                <description/>
+                <description/> 
+                
                 <type>filesystem</type>
                 <pidfile/>
                 <match/>
@@ -1113,8 +1113,9 @@ def sample_config_path(request):
     - str: The path to the temporary file.
     """
     with patch(
-        "ansible_collections.puzzle.opnsense.plugins.module_utils.version_utils.get_opnsense_version",  # pylint: disable=line-too-long
-        return_value="OPNsense Test",
+            "ansible_collections.puzzle.opnsense.plugins.module_utils.version_utils.get_opnsense_version",
+            # pylint: disable=line-too-long
+            return_value="OPNsense Test",
     ), patch.dict(VERSION_MAP, TEST_VERSION_MAP, clear=True):
         # Create a temporary file with a name based on the test function
         with NamedTemporaryFile(delete=False) as temp_file:
@@ -1157,8 +1158,8 @@ def test_wan_interface_assignment_to_etree():
         gateway=None,
         media=None,
         mediaopt=None,
-        blockbogons=1,
-        blockpriv=1,
+        block_bogons=1,
+        block_private=1,
         ipaddrv6="dhcp6",
         lock=1,
     )
@@ -1180,7 +1181,7 @@ def test_lan_interface_assignment_to_etree():
         ipaddr="192.168.56.10",
         spoofmac=None,
         subnet="21",
-        blockbogons=1,
+        block_bogons=1,
         ipaddrv6="track6",
         lock=1,
     )
@@ -1267,7 +1268,7 @@ def test_lo0_interface_assignment_to_etree():
 
 
 def test_simple_interface_assignment_from_ansible_module_params_simple(
-    sample_config_path,
+        sample_config_path,
 ):
     test_params: dict = {
         "identifier": "wan",
@@ -1292,7 +1293,7 @@ def test_simple_interface_assignment_from_ansible_module_params_simple(
 )
 @patch.dict(in_dict=VERSION_MAP, values=TEST_VERSION_MAP, clear=True)
 def test_interface_config_from_ansible_module_params_with_description_update(
-    mock_get_version, mock_get_interfaces, sample_config_path
+        mock_get_version, mock_get_interfaces, sample_config_path
 ):
     test_params: dict = {
         "identifier": "lan",
@@ -1300,7 +1301,6 @@ def test_interface_config_from_ansible_module_params_with_description_update(
         "description": "test_interface",
     }
     with InterfacesSet(sample_config_path) as interfaces_set:
-
         test_interface_config: InterfaceConfig = (
             InterfaceConfig.from_ansible_module_params(test_params)
         )
@@ -1327,7 +1327,7 @@ def test_interface_config_from_ansible_module_params_with_description_update(
 )
 @patch.dict(in_dict=VERSION_MAP, values=TEST_VERSION_MAP, clear=True)
 def test_interface_config_from_ansible_module_params_with_device_update(
-    mock_get_version, mock_get_interfaces, sample_config_path
+        mock_get_version, mock_get_interfaces, sample_config_path
 ):
     test_params: dict = {
         "identifier": "wan",
@@ -1360,7 +1360,7 @@ def test_interface_config_from_ansible_module_params_with_device_update(
 )
 @patch.dict(in_dict=VERSION_MAP, values=TEST_VERSION_MAP, clear=True)
 def test_interface_config_from_ansible_module_params_with_not_existing_device(
-    mock_get_version, mock_get_interfaces, sample_config_path
+        mock_get_version, mock_get_interfaces, sample_config_path
 ):
     test_params: dict = {
         "identifier": "wan",
@@ -1387,7 +1387,7 @@ def test_interface_config_from_ansible_module_params_with_not_existing_device(
 )
 @patch.dict(in_dict=VERSION_MAP, values=TEST_VERSION_MAP, clear=True)
 def test_interface_config_from_ansible_module_params_with_not_existing_identifier_and_used_device(
-    mock_get_version, mock_get_interfaces, sample_config_path
+        mock_get_version, mock_get_interfaces, sample_config_path
 ):
     test_params: dict = {
         "identifier": "test",
@@ -1402,8 +1402,8 @@ def test_interface_config_from_ansible_module_params_with_not_existing_identifie
             interfaces_set.update(test_interface_config)
             interfaces_set.save()
         assert (
-            "This device is already assigned, please unassign this device first"
-            in str(excinfo.value)
+                "This device is already assigned, please unassign this device first"
+                in str(excinfo.value)
         )
 
 
@@ -1417,7 +1417,7 @@ def test_interface_config_from_ansible_module_params_with_not_existing_identifie
 )
 @patch.dict(in_dict=VERSION_MAP, values=TEST_VERSION_MAP, clear=True)
 def test_interface_config_from_ansible_module_params_with_not_existing_identifier_and_not_used_device(
-    mock_get_version, mock_get_interfaces, sample_config_path
+        mock_get_version, mock_get_interfaces, sample_config_path
 ):
     test_params: dict = {
         "identifier": "test",
@@ -1450,7 +1450,7 @@ def test_interface_config_from_ansible_module_params_with_not_existing_identifie
 )
 @patch.dict(in_dict=VERSION_MAP, values=TEST_VERSION_MAP, clear=True)
 def test_interface_config_from_ansible_module_params_with_duplicate_device(
-    mock_get_version, mock_get_interfaces, sample_config_path
+        mock_get_version, mock_get_interfaces, sample_config_path
 ):
     test_params: dict = {
         "identifier": "wan",
@@ -1465,8 +1465,8 @@ def test_interface_config_from_ansible_module_params_with_duplicate_device(
             interfaces_set.update(test_interface_config)
             interfaces_set.save()
         assert (
-            "This device is already assigned, please unassign this device first"
-            in str(excinfo.value)
+                "This device is already assigned, please unassign this device first"
+                in str(excinfo.value)
         )
 
 
@@ -1480,9 +1480,8 @@ def test_interface_config_from_ansible_module_params_with_duplicate_device(
 )
 @patch.dict(in_dict=VERSION_MAP, values=TEST_VERSION_MAP, clear=True)
 def test_get_interfaces_success(
-    mock_get_version, mock_get_interfaces, sample_config_path
+        mock_get_version, mock_get_interfaces, sample_config_path
 ):
-
     # Assuming InterfacesSet needs a configuration path and we have sample_config_path defined
     with InterfacesSet(sample_config_path) as interfaces_set:
         result = interfaces_set.get_interfaces()
@@ -1500,16 +1499,15 @@ def test_get_interfaces_success(
 )
 @patch.dict(in_dict=VERSION_MAP, values=TEST_VERSION_MAP, clear=True)
 def test_get_interfaces_success(
-    mock_get_version, mock_get_interfaces, sample_config_path
+        mock_get_version, mock_get_interfaces, sample_config_path
 ):
-
     # Assuming InterfacesSet needs a configuration path and we have sample_config_path defined
     with InterfacesSet(sample_config_path) as interfaces_set:
         with pytest.raises(OPNSenseGetInterfacesError) as excinfo:
             result = interfaces_set.get_interfaces()
         assert (
-            "error encounterd while getting interfaces, less than one interface available"
-            in str(excinfo.value)
+                "error encounterd while getting interfaces, less than one interface available"
+                in str(excinfo.value)
         )
 
 

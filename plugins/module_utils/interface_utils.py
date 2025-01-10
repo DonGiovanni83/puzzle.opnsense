@@ -6,7 +6,7 @@ interfaces_utils module_utils: Module_utils to configure OPNsense interface sett
 """
 
 from dataclasses import dataclass, asdict, field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 
 
 from xml.etree.ElementTree import Element, ElementTree, SubElement
@@ -47,6 +47,14 @@ class InterfaceConfig:
         identifier (str): Unique ID for the interface.
         device (str): Device name.
         descr (Optional[str]): Description of the interface.
+        block_private (bool): When set, this option blocks traffic from IP addresses
+            that are reserved for private networks as per RFC 1918 (10/8, 172.16/12, 192.168/16)
+            as well as loopback addresses (127/8) and Carrier-grade NAT addresses (100.64/10).
+            This option should only be set for WAN interfaces that use the public IP address space.
+        block_bogons (bool):  When set, this option blocks traffic from IP addresses that are reserved
+            (but not RFC 1918) or not yet assigned by IANA. Bogons are prefixes that should never appear
+            in the Internet routing table, and obviously should not appear as the source address in any
+            packets you receive.
         extra_attrs (Dict[str, Any]): Additional attributes for configuration.
 
     Methods:
@@ -58,6 +66,8 @@ class InterfaceConfig:
 
     identifier: str
     device: str
+    block_private: bool
+    block_bogons: bool
     descr: Optional[str] = None
 
     # since only the above attributes are needed, the rest is handled here
@@ -67,11 +77,15 @@ class InterfaceConfig:
         self,
         identifier: str,
         device: str,
+        block_private: bool = False,
+        block_bogons: bool = False,
         descr: Optional[str] = None,
         **kwargs,
     ):
         self.identifier = identifier
         self.device = device
+        self.block_private = block_private
+        self.block_bogons = block_bogons
         if descr is not None:
             self.descr = descr
         self.extra_attrs = kwargs
@@ -99,6 +113,16 @@ class InterfaceConfig:
                 if_key = value.pop("if", None)
                 if if_key is not None:
                     value["device"] = if_key
+                    
+            mapped_fields: List[Tuple] = [
+                ("blockpriv", "block_private"),
+                ("blockbogons", "block_bogons"),
+            ]
+            
+            for xml_key, class_field in mapped_fields:
+                if xml_key in value:
+                    value[class_field] = value.pop(xml_key)
+            
             break  # Only process the first key, assuming there's only one
 
         # Return only the content of the dictionary without the key
@@ -124,10 +148,17 @@ class InterfaceConfig:
         # Create the main element
         main_element = Element(interface_config_dict["identifier"])
         # Special handling for 'device' and 'descr'
-        SubElement(main_element, "if").text = interface_assignment_dict.get("device")
-        SubElement(main_element, "descr").text = interface_assignment_dict.get("descr")
         SubElement(main_element, "if").text = interface_config_dict.get("device")
         SubElement(main_element, "descr").text = interface_config_dict.get("descr")
+        
+        # Special handling for 'blockbogons' & 'blockpriv'
+        mapped_fields: List[Tuple] = [
+            ("blockpriv", "block_private"),
+            ("blockbogons", "block_bogons"),
+        ]
+        for xml_key, class_field in mapped_fields:
+            if getattr(self, class_field):
+                SubElement(main_element, xml_key).text = str(int(getattr(self, class_field)))
 
         # handle special cases
         if getattr(self, "alias-subnet", None):
@@ -213,6 +244,8 @@ class InterfaceConfig:
             "identifier": params.get("identifier"),
             "device": params.get("device"),
             "descr": params.get("description"),
+            "block_private": params.get("block_private", None),
+            "block_bogons": params.get("block_bogons", None)
         }
 
         interface_config_dict = {
@@ -249,8 +282,8 @@ class InterfacesSet(OPNsenseModuleConfig):
 
     def __init__(self, path: str = "/conf/config.xml"):
         super().__init__(
-            module_name="interfaces_configs",
-            config_context_names=["interfaces_configs"],
+            module_name="interface",
+            config_context_names=["interface"],
             path=path,
         )
 
@@ -305,7 +338,7 @@ class InterfacesSet(OPNsenseModuleConfig):
         """
 
         # load requirements
-        php_requirements = self._config_maps["interfaces_configs"][
+        php_requirements = self._config_maps["interface"][
             "php_requirements"
         ]
         php_command = """
@@ -471,7 +504,7 @@ class InterfacesSet(OPNsenseModuleConfig):
 
         # Use 'find' to get the single parent element
         parent_element = self._config_xml_tree.find(
-            self._config_maps["interfaces_configs"]["interfaces"]
+            self._config_maps["interface"]["interfaces"]
         )
 
         # Assuming 'parent_element' correctly refers to the container of interface elements
