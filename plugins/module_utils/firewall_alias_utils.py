@@ -314,7 +314,7 @@ class FirewallAliasSet(OPNsenseModuleConfig):
             config_context_names=[
                 "firewall_alias",
                 "system_access_users",
-                "interfaces_assignments",
+                "interface",
             ],
             path=path,
         )
@@ -729,11 +729,11 @@ class FirewallAliasSet(OPNsenseModuleConfig):
             bool: True if changes were saved, False otherwise.
         """
 
-        # since "system_access_users" and "interfaces_assignments" are no
+        # since "system_access_users" and "interface" are no
         # longer needed and to avoid the configure_functions in
         # the save() method, they can be popped
         self._config_maps.pop("system_access_users")
-        self._config_maps.pop("interfaces_assignments")
+        self._config_maps.pop("interface")
 
         if not self.changed:
             return False

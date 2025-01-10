@@ -138,7 +138,7 @@ VERSION_MAP = {
                 },
             },
         },
-        "interfaces_assignments": {
+        "interface": {
             "interfaces": "interfaces",
             # Add other mappings here.
             "php_requirements": [
@@ -291,7 +291,7 @@ VERSION_MAP = {
                 },
             },
         },
-        "interfaces_assignments": {
+        "interface": {
             "interfaces": "interfaces",
             # Add other mappings here.
             "php_requirements": [
@@ -444,7 +444,7 @@ VERSION_MAP = {
                 },
             },
         },
-        "interfaces_assignments": {
+        "interface": {
             "interfaces": "interfaces",
             # Add other mappings here.
             "php_requirements": [
@@ -598,7 +598,7 @@ VERSION_MAP = {
                 },
             },
         },
-        "interfaces_assignments": {
+        "interface": {
             "interfaces": "interfaces",
             # Add other mappings here.
             "php_requirements": [
@@ -752,7 +752,7 @@ VERSION_MAP = {
                 },
             },
         },
-        "interfaces_assignments": {
+        "interface": {
             "interfaces": "interfaces",
             # Add other mappings here.
             "php_requirements": [
