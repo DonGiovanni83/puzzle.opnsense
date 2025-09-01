@@ -7,15 +7,19 @@
 
 from __future__ import absolute_import, division, print_function
 
+import dataclasses
+
 __metaclass__val = type
 
 import os
 from tempfile import NamedTemporaryFile
 from typing import List, Dict
 from unittest.mock import patch, MagicMock
+import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import Element
 
 import pytest
+from ansible_collections.puzzle.opnsense.plugins.module_utils import xml_utils
 from ansible_collections.puzzle.opnsense.plugins.module_utils.config_utils import (
     OPNsenseModuleConfig,
     UnsupportedOPNsenseVersion,
@@ -23,7 +27,9 @@ from ansible_collections.puzzle.opnsense.plugins.module_utils.config_utils impor
     ModuleMisconfigurationError,
     MissingConfigDefinitionForModuleError,
     UnsupportedVersionForModule,
+    ConfigObject,
 )
+from ansible_collections.puzzle.opnsense.plugins.module_utils.enum_utils import ListEnum
 
 # Test version map for OPNsense versions and modules
 TEST_VERSION_MAP = {
@@ -576,3 +582,186 @@ def test_success_set_on_empty_leaf_node(sample_config_path):
         new_config.set("test", "remote_system_username")
         assert new_config.get("remote_system_username").text == "test"
         new_config.save()
+
+
+###
+# ConfigObject Tests
+###
+
+
+# pylint: disable=too-few-public-methods
+class TestType(ListEnum):
+    """Enumeration for Test Types"""
+
+    __test__ = False
+    ONE = "one"
+    TWO = "two"
+
+
+@dataclasses.dataclass
+class TestConfigObject(ConfigObject):
+    """Configuration Object representation"""
+
+    __test__ = False
+    name: str
+    pretty_name: str
+    type: TestType
+    _object_root_tag_name: str = "test"
+
+    @classmethod
+    def preprocess_ansible_module_params(cls, raw_params: dict) -> dict:
+        """Preprocess params from Ansible module for TestConfigObject"""
+
+        params: dict = {**raw_params}
+        params["pretty_name"] = params["name"].capitalize()
+        return params
+
+    @classmethod
+    def preprocess_from_xml_data(cls, raw_xml_data: dict) -> dict:
+        """Preprocess raw XML data for TestConfigObject instantiation"""
+
+        params: dict = {**raw_xml_data}
+        params["pretty_name"] = params["name"].capitalize()
+        return params
+
+
+@dataclasses.dataclass
+class TestNestedConfigObject(ConfigObject):
+    """Nested Configuration Object representation"""
+
+    __test__ = False
+    sub_element: TestConfigObject
+    _object_root_tag_name: str = "nested"
+
+    @classmethod
+    def preprocess_ansible_module_params(cls, raw_params: dict) -> dict:
+        """Preprocess params from Ansible module for TestNestedConfigObject"""
+
+        return {"sub_element": {"name": raw_params["sub_element_name"]}}
+
+
+def test_config_object_from_ansible_params_simple() -> None:
+    """Basic ConfigObject.from_ansible_module_params test"""
+    module_params: dict = {"name": "test_object", "type": "one"}
+
+    test_obj: TestConfigObject = TestConfigObject.from_ansible_module_params(
+        module_params
+    )
+
+    assert test_obj.name == module_params["name"]
+    assert test_obj.type == TestType.ONE
+
+
+def test_config_object_preprocessed_parameters() -> None:
+    """Basic ConfigObject.from_ansible_module_params test"""
+    module_params: dict = {"name": "test object", "type": "one"}
+
+    test_obj: TestConfigObject = TestConfigObject.from_ansible_module_params(
+        module_params
+    )
+
+    assert test_obj.name == module_params["name"]
+    assert test_obj.pretty_name == "Test object"
+    assert test_obj.type == TestType.ONE
+
+
+def test_simple_obj_root_tag_name() -> None:
+    """Test TestConfigObject creation from simple XML with root tag"""
+
+    simple: str = """
+        <test>
+            <name>test_object</name>
+            <type>one</type>
+        </test>
+    """
+
+    test_element: Element = ET.fromstring(simple)
+
+    test_object: TestConfigObject = TestConfigObject.from_xml_element(test_element)
+
+    assert test_object.name == "test_object"
+    assert test_object.pretty_name == "Test_object"
+    assert test_object.type == TestType.ONE
+
+
+def test_simple_obj_extra_data() -> None:
+    """Test TestConfigObject creation from XML with extra data"""
+
+    simple: str = """
+        <test>
+            <name>test_object</name>
+            <extra>Extra Data</extra>
+            <type>one</type>
+        </test>
+    """
+
+    test_element: Element = ET.fromstring(simple)
+
+    test_object: TestConfigObject = TestConfigObject.from_xml_element(test_element)
+
+    assert test_object.name == "test_object"
+    assert test_object.pretty_name == "Test_object"
+    assert test_object.type == TestType.ONE
+    assert test_object.extra_data is not None
+    assert "extra" in test_object.extra_data
+    assert test_object.extra_data["extra"] == "Extra Data"
+
+
+def test_simple_obj_extra_data_to_xml() -> None:
+    """Test TestConfigObject extra data inclusion in generated XML"""
+
+    # pylint: disable=unexpected-keyword-arg
+    simple_obj: TestConfigObject = TestConfigObject(
+        name="test",
+        pretty_name="Test Object",
+        type=TestType.ONE,
+    )
+    simple_obj.extra_data = {"extra": "Some Data"}
+
+    test_element: Element = simple_obj.to_xml_element()
+
+    assert test_element.tag == "test"
+    children: List[Element] = list(test_element)
+    assert len(children) == 4
+    for child in children:
+        assert child.tag in ["name", "pretty_name", "type", "extra"]
+
+
+def test_nested_obj_extra_data_to_xml() -> None:
+    """Test nested TestConfigObject extra data inclusion in generated XML"""
+
+    # pylint: disable=unexpected-keyword-arg
+    obj: TestConfigObject = TestConfigObject(
+        name="test",
+        pretty_name="Test Object",
+        type=TestType.ONE,
+    )
+    obj.extra_data = {"extra": "Some Data"}
+    nested_obj: TestNestedConfigObject = TestNestedConfigObject(
+        sub_element=obj
+    )
+
+    nested_obj.extra_data = {"extra": "data"}
+
+    expected_element: Element = Element("nested")
+    _expected_extra: Element = Element("extra")
+    _expected_extra.text = "data"
+    _child_obj: Element = Element("sub_element")
+    _child_obj_name: Element = Element("name")
+    _child_obj_name.text = "test"
+    _child_obj_pretty_name: Element = Element("pretty_name")
+    _child_obj_pretty_name.text = "Test Object"
+    _child_obj_type: Element = Element("type")
+    _child_obj_type.text = "one"
+    _child_obj_extra: Element = Element("extra")
+    _child_obj_extra.text = "Some Data"
+
+    _child_obj.extend(
+        [_child_obj_name, _child_obj_pretty_name, _child_obj_type, _child_obj_extra]
+    )
+
+    expected_element.extend([_child_obj, _expected_extra])
+
+    actual_element: Element = nested_obj.to_xml_element()
+
+    assert xml_utils.elements_equal(expected_element, actual_element), xml_utils
