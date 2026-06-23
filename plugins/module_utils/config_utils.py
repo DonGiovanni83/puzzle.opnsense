@@ -11,7 +11,9 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
-from typing import List, Optional, Dict
+import abc
+import dataclasses
+from typing import List, Optional, Dict, Any, get_args
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
@@ -21,6 +23,7 @@ from ansible_collections.puzzle.opnsense.plugins.module_utils import (
     module_index,
     xml_utils,
 )
+from ansible_collections.puzzle.opnsense.plugins.module_utils.enum_utils import ListEnum
 
 
 class OPNSenseConfigUsageError(Exception):
@@ -484,3 +487,145 @@ class OPNsenseModuleConfig:
                     config_diff_after.update({xpath: in_memory_element.text})
 
         return {"before": config_diff_before, "after": config_diff_after}
+
+
+@dataclasses.dataclass
+class ConfigObject:
+    """
+    Base class for config object abstraction.
+    """
+
+    @property
+    @abc.abstractmethod
+    def _object_root_tag_name(self) -> str:
+        raise NotImplementedError()
+
+    @property
+    @abc.abstractmethod
+    def extra_data(self) -> dict:
+        if not hasattr(self, "_extra_args"):
+            setattr(self, "_extra_args", {})
+
+        return self._extra_args
+
+    @extra_data.setter
+    def extra_data(self, data: dict) -> None:
+        setattr(self, "_extra_args", data)
+
+    def __post_init__(self):
+        """
+        'Cast' ListEnum type fields which have a string value to the
+        correct enum value.
+        """
+        for field in dataclasses.fields(self):
+            field_value: Any = getattr(self, field.name)
+
+            if field_value is None:
+                continue
+
+            field_type: type
+
+            # handle types from typing package which are not of class type.
+            if get_args(field.type):
+                field_type = get_args(field.type)[0]
+            else:
+                field_type = field.type
+
+            # Check if the value is a string and the field_type is a subclass of ListEnum
+            if isinstance(field_value, str) and issubclass(field_type, ListEnum):
+                # Convert string to ListEnum
+                setattr(self, field.name, field_type.from_string(field_value))
+
+    @classmethod
+    def preprocess_ansible_module_params(cls, raw_params: dict) -> dict:
+        """
+        Performs the mapping of the module parameters to the required data
+        for the instantiation of the given dataclass.
+        :param raw_params: ansible parameters as provided by the invocation.
+        :return:
+        """
+        return raw_params
+
+    @classmethod
+    def from_ansible_module_params(cls, params: dict) -> "ConfigObject":
+        """
+        Creates instance from given ansible module parameters.
+        :param params: raw ansible module execution parameters.
+        :return: instance of the config object class.
+        """
+        preprocessed_params: dict = cls.preprocess_ansible_module_params(params)
+        return cls(**preprocessed_params)
+
+    @classmethod
+    def preprocess_from_xml_data(cls, raw_xml_data: dict) -> dict:
+        """
+        Performs the mapping of the xml data dictionary to the required data
+        for the instantiation of the given dataclass.
+        :param raw_xml_data: xml data as provided by the xml_utils.etree_to_dict function.
+        :return: preprocessed element data
+        """
+        return raw_xml_data
+
+    @classmethod
+    def from_xml_element(cls, element: Element) -> "ConfigObject":
+        """
+        Creates instance from given XML Element instance.
+        :param element: XML Element to get data from
+        :return: Dataclass object
+        """
+        element_data: dict = xml_utils.etree_to_dict(element)[cls._object_root_tag_name]
+        constructor_data: dict = cls.preprocess_from_xml_data(element_data)
+
+        class_attribute_names: List[str] = list(
+            map(lambda f: f.name, dataclasses.fields(cls))
+        )
+        # filter out data that cannot be mapped to a class attribute
+        _extra_data: dict = {
+            k: v for k, v in constructor_data.items() if k not in class_attribute_names
+        }
+
+        for k in _extra_data:
+            del constructor_data[k]
+
+        new_obj = cls(**constructor_data)
+        new_obj.extra_data = _extra_data
+        return new_obj
+
+    def get_class_data_for_xml(self) -> dict:
+        """
+        Provide instance data preprocessed for ElementTree conversion.
+        :return: dictionary of class data for xml object creation.
+        """
+        # create a dict which is a shallow copy of self
+        fields: dict = {
+            field.name: getattr(self, field.name)
+            for field in dataclasses.fields(self)
+            if not field.name.startswith("_")
+        }
+
+        for f_name, f_val in fields.items():
+            # for any field that is of subtype of ConfigObject, i.e. it has
+            # a _get_class_data_for_xml function, convert it to a dict
+            if hasattr(f_val, "get_class_data_for_xml"):
+                fields[f_name] = f_val.get_class_data_for_xml()
+
+            # Handle Enum fields which have a value
+            elif hasattr(f_val, "value"):
+                fields[f_name] = f_val.value
+
+            if isinstance(f_val, bool):
+                fields[f_name] = "1" if f_val else "0"
+
+        # extract extra_data to write it correctly to XML
+        for e_name, e_val in self.extra_data.items():
+            fields[e_name] = e_val
+
+        return fields
+
+    def to_xml_element(self) -> Element:
+        """
+        Converts the ConfigObject instance to an ElementTree.Element object
+        :return: ElementTree.Element object of the class instance
+        """
+        class_xml_data: dict = self.get_class_data_for_xml()
+        return xml_utils.dict_to_etree(self._object_root_tag_name, class_xml_data)[0]
